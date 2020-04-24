@@ -15,7 +15,7 @@
 
 #define KEY 10
 
-static const char *dirpath = "/home/el/tiga";
+static const char *dirpath = "/home/el/Documents";
 char charlist[1024] = "9(ku@AW1[Lmvgax6q`5Y2Ry?+sF!^HKQiBXCUSe&0M.b%rI'7d)o4~VfZ*{#:}ETt$3J-zpc]lnh8,GwP_ND|jO";
 char *limit;
 
