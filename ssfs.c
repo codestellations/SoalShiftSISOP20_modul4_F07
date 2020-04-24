@@ -15,7 +15,7 @@
 
 #define KEY 10
 
-static const char *dirpath = "/home/el/Documents";
+static const char *dirpath = "/home/el/tiga";
 char charlist[1024] = "9(ku@AW1[Lmvgax6q`5Y2Ry?+sF!^HKQiBXCUSe&0M.b%rI'7d)o4~VfZ*{#:}ETt$3J-zpc]lnh8,GwP_ND|jO";
 char *limit;
 
@@ -94,10 +94,11 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   char name[1000];
 
   sprintf(name, "%s", path);
+  if(strstr(path, "encv1_")!=NULL)
   enc(name);
   sprintf(fpath,"%s%s",dirpath,name);
 
-  // printf("GETATR temp %s path %s name %s\n", fpath, path, name);
+  printf("GETATR fpath %s path %s name %s\n", fpath, path, name);
 
   res = lstat(fpath, stbuf);
 
@@ -119,6 +120,7 @@ off_t offset, struct fuse_file_info *fi) {
 
   else {
     sprintf(name, "%s", path);
+    if(strstr(path, "encv1_")!=NULL)
     enc(name);
     sprintf(fpath, "%s%s", dirpath, name);
     // printf("READIR temp %s path %s name %s\n", fpath, path, name);
@@ -148,6 +150,7 @@ off_t offset, struct fuse_file_info *fi) {
 
     char temp[1000];
     strcpy(temp, de->d_name);
+    if(strstr(path, "encv1_")!=NULL)
     dec(temp);
     // printf("OPENDIR temp %s name %s\n", temp, de->d_name);
 
@@ -172,6 +175,7 @@ struct fuse_file_info *fi) {
   else {
     sprintf(name, "%s", path);
 
+    if(strstr(path, "encv1_")!=NULL)
     enc(name);
     sprintf(fpath, "%s%s",dirpath,name);
 
@@ -211,6 +215,7 @@ off_t offset, struct fuse_file_info *fi) {
 
   else {
     sprintf(name, "%s", path);
+    if(strstr(path, "encv1_")!=NULL)
     enc(name);
     sprintf(fpath, "%s%s", dirpath, name);
 
@@ -242,6 +247,7 @@ static int xmp_open(const char *path, struct fuse_file_info *fi) {
 
   else {
     sprintf(name, "%s", path);
+    if(strstr(path, "encv1_")!=NULL)
     enc(name);
     sprintf(fpath, "%s%s", dirpath, name);
 
@@ -361,7 +367,6 @@ static int xmp_unlink(const char *path){
     sprintf(fpath, "%s%s", dirpath, name);
 
     printf("UNLINK temp %s path %s name %s\n", fpath, path, name);
-
   }
 
   res = unlink(fpath);
