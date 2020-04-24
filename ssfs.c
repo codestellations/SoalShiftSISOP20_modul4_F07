@@ -62,6 +62,28 @@ void dec(char* kata){
   }
 }
 
+/*buat encv2_*/
+void enc2(char* kata)
+{
+    int len = 0;
+    char dest[1024];
+    void * buff = (char *)malloc(1024);
+    FILE *fp = fopen(kata, "rb");
+    sprintf(dest,"%s.%03d", dest, len);
+    while(1)
+    {
+        size_t size = fread(buff, 1, 1024, fp);
+        if(size == 0) break;
+        FILE *fp2 = fopen(dest, "w");
+        fwrite(buff, 1, size, fp2);
+        len++;
+        sprintf(dest, "%s.%03d", dest, len);
+    }
+    free(buff);
+    fclose(fp);
+    remove(dest);
+}
+
 void logSys(char* command, char* argv1, char* argv2, int lev){
   char message[1000], str_time[100];
   char level[2][10] = {"INFO", "WARNING"};
