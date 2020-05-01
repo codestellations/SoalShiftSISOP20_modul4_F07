@@ -11,6 +11,7 @@
 #include <pwd.h>
 #include <time.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 
@@ -39,7 +40,6 @@ void enc(char* kata){
       }
     }
   }
-  // printf("STA %d %d\n", sta, kata[sta]);
 
   limit = strrchr(kata, '.');
   if(limit != NULL){
@@ -144,6 +144,32 @@ void logSys(char* command, char* argv1, char* argv2, int lev){
   return;
 }
 
+void toDatabase(char* command, char* argv1, char* argv2, int lev){
+  char message[1000], str_time[100];
+  char level[2][10] = {"INFO", "WARNING"};
+  char log[100] = "/home/el/database/log/encv1.log";
+  time_t now = time(NULL);
+  // [LEVEL]::[yy][mm][dd]-[HH]:[MM]:[SS]::[CMD]::[DESC...]
+
+  strftime(str_time, 50, "%y%m%d-%H:%M:%S", localtime(&now));
+
+  if(argv2 == NULL){
+    if(argv1 == NULL){
+      sprintf(message, "%s::%s::%s\n", level[lev], str_time, command);
+    }
+    else
+    sprintf(message, "%s::%s::%s::%s\n", level[lev], str_time, command, argv1);
+  }
+  else
+  sprintf(message, "%s::%s::%s::%s::%s\n", level[lev], str_time, command, argv1, argv2);
+
+  FILE *fptr = fopen(log, "a+");
+  fprintf(fptr, "%s", message);
+  fclose(fptr);
+
+  return;
+}
+
 static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   int res;
   char fpath[1000];
@@ -163,7 +189,6 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
     enc(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
-    // printf("GETATR fpath %s dirpath %s name %s\n", fpath, dirpath, name);
   }
 
   res = lstat(fpath, stbuf);
@@ -184,7 +209,6 @@ off_t offset, struct fuse_file_info *fi) {
   if(strcmp(path,"/") == 0) {
     path=dirpath;
     sprintf(fpath,"%s",dirpath);
-    // printf("READIR IF fpath %s path %s\n", fpath, path);
   }
 
   else {
@@ -223,7 +247,6 @@ off_t offset, struct fuse_file_info *fi) {
     char temp[1000];
     strcpy(temp, de->d_name);
     if(strstr(fullpathname, "encv1_")!=NULL){
-      // if(strstr(de->d_name, "encv1_")==NULL)
       dec(temp);
     }
 
@@ -248,7 +271,6 @@ struct fuse_file_info *fi) {
   if(strcmp(path,"/") == 0) {
     path=dirpath;
     sprintf(fpath,"%s",dirpath);
-    // printf("READ IF fpath %s path %s\n", fpath, path);
   }
 
   else {
@@ -278,7 +300,7 @@ struct fuse_file_info *fi) {
   if (res == -1)
   res = -errno;
 
-  logSys("READ", name, NULL, 0);
+  // logSys("READ", name, NULL, 0);
 
   close(fd);
 
@@ -375,8 +397,10 @@ static int xmp_mkdir(const char *path, mode_t mode){
     sprintf(name, "%s", path);
 
     sprintf(temp, "%s%s", dirpath, name);
-    if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    if(strstr(temp, "encv1_")!=NULL){
+      enc(name);
+      toDatabase("MKDIR", name, NULL, 0);
+    }
 
     sprintf(fpath, "%s%s", dirpath, name);
 
@@ -444,8 +468,10 @@ static int xmp_rename(const char *path, const char *to){
     sprintf(name, "%s", path);
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
-    if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    if(strstr(temp, "encv1_")!=NULL){
+      enc(name);
+      toDatabase("MKDIR", name, NULL, 0);
+    }
     sprintf(fpath, "%s%s", dirpath, name);
 
     sprintf(toname, "%s", to);
@@ -454,33 +480,8 @@ static int xmp_rename(const char *path, const char *to){
     printf("RENAME temp %s path %s name %s\n", fpath, path, name);
   }
 
-  // int dirIndex = 0;
-  // int len = strlen(topath);
-  // for(int i=len; i>=0; i--){
-  //   if(topath[i] == '/'){
-  //     dirIndex = i;
-  //     break;
-  //   }
-  // }
-  //
-  // char dir[1000];
-  // strncpy(dir, topath, dirIndex);
-  // pid_t id = fork();
-  //
-  // if(id==1){
-  //   wait(NULL);
-  // }
-  // else{
-  //   char* argv[]={"mkdir", "-p", dir, NULL};
-  //   execv("/bin/mkdir", argv);
-  // }
-
   res = rename(fpath, topath);
   if(res == -1) return -errno;
-  // else{
-  //   if(strstr(temp, "encv1_")!=NULL)
-  //   enc(name);
-  // }
 
   logSys("RENAME", name, toname, 0);
 
@@ -553,6 +554,36 @@ static int xmp_create(const char* path, mode_t mode, struct fuse_file_info *fi){
   return 0;
 }
 
+static int xmp_truncate(const char *path, off_t size){
+  int res;
+
+  char fpath[1000];
+  char name[1000];
+
+  if(strcmp(path,"/") == 0) {
+    path=dirpath;
+    sprintf(fpath,"%s",dirpath);
+  }
+
+  else {
+    sprintf(name, "%s", path);
+
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
+    enc(name);
+
+    sprintf(fpath, "%s%s", dirpath, name);
+
+    printf("TRUNCATE temp %s path %s name %s\n", fpath, path, name);
+  }
+
+  res = truncate(fpath, size);
+  if(res == -1) return -errno;
+
+  return 0;
+}
+
 static struct fuse_operations xmp_oper = {
   .getattr = xmp_getattr,
   .readdir = xmp_readdir,
@@ -564,7 +595,7 @@ static struct fuse_operations xmp_oper = {
   .rename = xmp_rename,
   .unlink = xmp_unlink,
   .create = xmp_create,
-
+  .truncate = xmp_truncate,
 };
 
 int  main(int  argc, char *argv[]) {
