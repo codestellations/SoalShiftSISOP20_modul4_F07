@@ -110,6 +110,7 @@ void enc2(char* kata)
         if(size == 0) break;
         FILE *fp2 = fopen(dest, "w");
         fwrite(buff, 1, size, fp2);
+	fclose(fp2);
         len++;
         sprintf(dest, "%s.%03d", dest, len);
     }
