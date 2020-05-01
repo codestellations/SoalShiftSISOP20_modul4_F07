@@ -119,6 +119,30 @@ void enc2(char* kata)
     remove(dest);
 }
 
+void dec2(char *kata)
+{
+    FILE *fp = fopen(kata, "r");
+    if(fp != NULL) return;
+    FILE *fp2 = fopen(kata, "w");
+    int len = 0;
+    char dest[1024];
+    sprintf(dest, "%s%.03d", dest, len);
+    void * buff = (char *)malloc(1024);
+    while(1)
+    {
+        FILE *fp3 = fopen(kata, "rb");
+        if(fp3 == NULL) return;
+        size_t size = fread(buff, 1, 1024, fp3);
+        fwrite(buff, 1, size, fp2);
+        fclose(fp3);
+        remove(dest);
+        len++;
+        sprintf(dest, "%s%.03d", dest, len);
+    }
+    free(buff);
+    fclose(fp2);
+}
+
 void logSys(char* command, char* argv1, char* argv2, int lev){
   char message[1000], str_time[100];
   char level[2][10] = {"INFO", "WARNING"};
