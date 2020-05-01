@@ -1,4 +1,4 @@
-// gcc -Wall `pkg-config fuse --cflags` [file.c] -o [output] `pkg-config fuse --libs`
+// gcc -Wall `pkg-config fuse --cflags` ssfs.c -o ssfs `pkg-config fuse --libs`
 
 #define FUSE_USE_VERSION 28
 #include <fuse.h>
@@ -12,18 +12,34 @@
 #include <time.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 
 #define KEY 10
 
-static const char *dirpath = "/home/el/Documents";
+static const char *dirpath = "/home/el/tiga";
 char charlist[1024] = "9(ku@AW1[Lmvgax6q`5Y2Ry?+sF!^HKQiBXCUSe&0M.b%rI'7d)o4~VfZ*{#:}ETt$3J-zpc]lnh8,GwP_ND|jO";
-char *limit;
+char *limit, *start;
+int command = 0;
 
 void enc(char* kata){
-  int len;
+  int len, sta;
 
   if(!strcmp(kata, ".") || !strcmp(kata, ".."))
   return;
+
+  start = strchr(kata, '_');
+  sta = 0;
+  if(strstr(kata, "encv1_")!=NULL){
+    sta = start-kata;
+    for(int i=sta; i<strlen(kata); i++){
+      sta = strlen(kata);
+      if(kata[i]== '/'){
+        sta = i+1;
+        break;
+      }
+    }
+  }
+  // printf("STA %d %d\n", sta, kata[sta]);
 
   limit = strrchr(kata, '.');
   if(limit != NULL){
@@ -31,7 +47,7 @@ void enc(char* kata){
   }
   else len = strlen(kata);
 
-  for(int i=0; i<len; i++){
+  for(int i=sta; i<len; i++){
     for(int j=0; j<87; j++){
       if(kata[i] == charlist[j]){
         kata[i] = charlist[(j+87-KEY)%87];
@@ -39,12 +55,28 @@ void enc(char* kata){
       }
     }
   }
+
+  printf("ENC %s\n", kata);
 }
 
 void dec(char* kata){
-  int len;
+  int len, sta;
   if(!strcmp(kata, ".") || !strcmp(kata, ".."))
   return;
+
+  start = strchr(kata, '_');
+  sta = 0;
+  if(strstr(kata, "encv1_")!=NULL){
+    sta = start-kata;
+    for(int i=sta; i<strlen(kata); i++){
+      sta = strlen(kata);
+      if(kata[i]== '/'){
+        sta = i+1;
+        break;
+      }
+    }
+
+  }
 
   limit = strrchr(kata, '.');
   if(limit != NULL){
@@ -52,7 +84,7 @@ void dec(char* kata){
   }
   else len = strlen(kata);
 
-  for(int i=0; i<len; i++){
+  for(int i=sta; i<len; i++){
     for(int j=0; j<87; j++){
       if(kata[i] == charlist[j]){
         kata[i] = charlist[(j+KEY)%87];
@@ -60,6 +92,8 @@ void dec(char* kata){
       }
     }
   }
+
+  printf("DEC %s\n", kata);
 }
 
 void logSys(char* command, char* argv1, char* argv2, int lev){
@@ -69,17 +103,17 @@ void logSys(char* command, char* argv1, char* argv2, int lev){
   time_t now = time(NULL);
   // [LEVEL]::[yy][mm][dd]-[HH]:[MM]:[SS]::[CMD]::[DESC...]
 
-  strftime(str_time, 50, "[%Y][%m][%D]-[%H]:[%M]:[%S]", localtime(&now));
+  strftime(str_time, 50, "%y%m%d-%H:%M:%S", localtime(&now));
 
   if(argv2 == NULL){
     if(argv1 == NULL){
-      sprintf(message, "[%s]::%s::[%s]\n", level[lev], str_time, command);
+      sprintf(message, "%s::%s::%s\n", level[lev], str_time, command);
     }
     else
-    sprintf(message, "[%s]::%s::[%s]::%s\n", level[lev], str_time, command, argv1);
+    sprintf(message, "%s::%s::%s::%s\n", level[lev], str_time, command, argv1);
   }
   else
-  sprintf(message, "[%s]::%s::[%s]::%s::%s\n", level[lev], str_time, command, argv1, argv2);
+  sprintf(message, "%s::%s::%s::%s::%s\n", level[lev], str_time, command, argv1, argv2);
 
   FILE *fptr = fopen(log, "a+");
   fprintf(fptr, "%s", message);
@@ -93,17 +127,29 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   char fpath[1000];
   char name[1000];
 
-  sprintf(name, "%s", path);
-  if(strstr(path, "encv1_")!=NULL)
-  enc(name);
-  sprintf(fpath,"%s%s",dirpath,name);
+  if(strcmp(path,"/") == 0) {
+    path=dirpath;
+    sprintf(fpath,"%s",dirpath);
+  }
 
-  printf("GETATR fpath %s path %s name %s\n", fpath, path, name);
+  else {
+    sprintf(name, "%s", path);
+
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL && command==0)
+    enc(name);
+
+    sprintf(fpath, "%s%s", dirpath, name);
+    // printf("GETATR fpath %s dirpath %s name %s\n", fpath, dirpath, name);
+  }
 
   res = lstat(fpath, stbuf);
 
   if (res == -1)
   return -errno;
+
+  command = 0;
 
   return 0;
 }
@@ -116,15 +162,19 @@ off_t offset, struct fuse_file_info *fi) {
   if(strcmp(path,"/") == 0) {
     path=dirpath;
     sprintf(fpath,"%s",dirpath);
+    // printf("READIR IF fpath %s path %s\n", fpath, path);
   }
 
   else {
     sprintf(name, "%s", path);
-    if(strstr(path, "encv1_")!=NULL)
-    enc(name);
-    sprintf(fpath, "%s%s", dirpath, name);
-    // printf("READIR temp %s path %s name %s\n", fpath, path, name);
 
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
+    enc(name);
+
+    sprintf(fpath, "%s%s", dirpath, name);
+    printf("READIR temp %s dirpath %s name %s\n", fpath, dirpath, name);
   }
 
   int res = 0;
@@ -146,19 +196,25 @@ off_t offset, struct fuse_file_info *fi) {
     st.st_mode = de->d_type << 12;
 
     char fullpathname[1000];
-    sprintf(fullpathname, "%s%s", fpath, de->d_name);
+    sprintf(fullpathname, "%s/%s", fpath, de->d_name);
 
     char temp[1000];
     strcpy(temp, de->d_name);
-    if(strstr(path, "encv1_")!=NULL)
-    dec(temp);
-    // printf("OPENDIR temp %s name %s\n", temp, de->d_name);
+    if(strstr(fullpathname, "encv1_")!=NULL){
+      // if(strstr(de->d_name, "encv1_")==NULL)
+      dec(temp);
+    }
+
+    printf("OPENDIR fpath %s name %s\n", fullpathname, de->d_name);
 
     res = (filler(buf, temp, &st, 0));
 
     if(res!=0) break;
   }
   closedir(dp);
+
+  command = 0;
+
   return 0;
 }
 
@@ -170,17 +226,20 @@ struct fuse_file_info *fi) {
   if(strcmp(path,"/") == 0) {
     path=dirpath;
     sprintf(fpath,"%s",dirpath);
+    // printf("READ IF fpath %s path %s\n", fpath, path);
   }
 
   else {
     sprintf(name, "%s", path);
 
-    if(strstr(path, "encv1_")!=NULL)
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
     enc(name);
+
     sprintf(fpath, "%s%s",dirpath,name);
 
     printf("READ temp %s path %s name %s\n", fpath, path, name);
-
   }
 
   int res = 0;
@@ -200,6 +259,9 @@ struct fuse_file_info *fi) {
   logSys("READ", name, NULL, 0);
 
   close(fd);
+
+  command = 0;
+
   return res;
 }
 
@@ -215,12 +277,15 @@ off_t offset, struct fuse_file_info *fi) {
 
   else {
     sprintf(name, "%s", path);
-    if(strstr(path, "encv1_")!=NULL)
+
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
     enc(name);
+
     sprintf(fpath, "%s%s", dirpath, name);
 
     printf("WRITE temp %s path %s name %s\n", fpath, path, name);
-
   }
 
   int res,fd;
@@ -232,6 +297,9 @@ off_t offset, struct fuse_file_info *fi) {
   logSys("WRITE", name, NULL, 0);
 
 	close(fd);
+
+  command = 0;
+
 	return res;
 }
 
@@ -247,12 +315,15 @@ static int xmp_open(const char *path, struct fuse_file_info *fi) {
 
   else {
     sprintf(name, "%s", path);
-    if(strstr(path, "encv1_")!=NULL)
+
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(dirpath, "encv1_")!=NULL)
     enc(name);
+
     sprintf(fpath, "%s%s", dirpath, name);
 
     printf("OPEN temp %s path %s name %s\n", fpath, path, name);
-
   }
 
   res = open(fpath, fi->flags);
@@ -260,6 +331,9 @@ static int xmp_open(const char *path, struct fuse_file_info *fi) {
   logSys("OPEN", name, NULL, 0);
 
   close(res);
+
+  command = 0;
+
   return 0;
 
 }
@@ -268,6 +342,7 @@ static int xmp_mkdir(const char *path, mode_t mode){
   int res;
   char fpath[1000];
   char name[1000];
+  char temp[1000];
 
   if(strcmp(path,"/") == 0) {
     path=dirpath;
@@ -276,17 +351,23 @@ static int xmp_mkdir(const char *path, mode_t mode){
 
   else {
     sprintf(name, "%s", path);
-    // enc(name);
+
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
+    enc(name);
+
     sprintf(fpath, "%s%s", dirpath, name);
 
     printf("MKDIR temp %s path %s name %s\n", fpath, path, name);
   }
 
-  res = mkdir(fpath, 0700);
+  res = mkdir(temp, 0700);
 
   if(res == -1) return -errno;
 
   logSys("MKDIR", name, NULL, 0);
+
+  command = 1;
 
   return 0;
 }
@@ -303,7 +384,12 @@ static int xmp_rmdir(const char *path){
 
   else {
     sprintf(name, "%s", path);
+
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
     enc(name);
+
     sprintf(fpath, "%s%s", dirpath, name);
 
     printf("RMDIR temp %s path %s name %s\n", fpath, path, name);
@@ -314,6 +400,8 @@ static int xmp_rmdir(const char *path){
   if(res == -1) return -errno;
 
   logSys("RMDIR", name, NULL, 1);
+
+  command = 0;
 
   return 0;
 }
@@ -332,21 +420,49 @@ static int xmp_rename(const char *path, const char *to){
 
   else {
     sprintf(name, "%s", path);
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
     enc(name);
     sprintf(fpath, "%s%s", dirpath, name);
 
     sprintf(toname, "%s", to);
-    enc(toname);
     sprintf(topath, "%s%s", dirpath, toname);
 
     printf("RENAME temp %s path %s name %s\n", fpath, path, name);
-
   }
+
+  // int dirIndex = 0;
+  // int len = strlen(topath);
+  // for(int i=len; i>=0; i--){
+  //   if(topath[i] == '/'){
+  //     dirIndex = i;
+  //     break;
+  //   }
+  // }
+  //
+  // char dir[1000];
+  // strncpy(dir, topath, dirIndex);
+  // pid_t id = fork();
+  //
+  // if(id==1){
+  //   wait(NULL);
+  // }
+  // else{
+  //   char* argv[]={"mkdir", "-p", dir, NULL};
+  //   execv("/bin/mkdir", argv);
+  // }
 
   res = rename(fpath, topath);
   if(res == -1) return -errno;
+  // else{
+  //   if(strstr(temp, "encv1_")!=NULL)
+  //   enc(name);
+  // }
 
   logSys("RENAME", name, toname, 0);
+
+  command = 0;
 
   return 0;
 }
@@ -363,7 +479,12 @@ static int xmp_unlink(const char *path){
 
   else {
     sprintf(name, "%s", path);
+
+    char temp[1000];
+    sprintf(temp, "%s%s", dirpath, name);
+    if(strstr(temp, "encv1_")!=NULL)
     enc(name);
+
     sprintf(fpath, "%s%s", dirpath, name);
 
     printf("UNLINK temp %s path %s name %s\n", fpath, path, name);
@@ -373,6 +494,8 @@ static int xmp_unlink(const char *path){
   if(res == -1) return -errno;
 
   logSys("UNLINK", name, NULL, 1);
+
+  command = 0;
 
   return 0;
 }
@@ -402,6 +525,8 @@ static int xmp_create(const char* path, mode_t mode, struct fuse_file_info *fi){
   if(res == -1) return -errno;
 
   logSys("CREAT", name, NULL, 0);
+
+  command = 0;
 
   return 0;
 }
