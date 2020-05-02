@@ -147,6 +147,76 @@ fungsi ini dipanggil pada implementasi `mkdir` dan `rename` seperti berikut. ber
     }
 ~~~
 
+#Soal 2: Enkripsi versi 2
+Apabila suatu folder di-rename dengan `encv2_` maka isi dari folder tersebut akan terenkripsi dengan cara file - file tersebut akan terbagi sejumlah ukuran total dari file tersebut yang masing - masing dari sub - file berukuran 1024bytes. Sedangkan penamaan dari sub - file ini mengikuti nama file asli yang diikuti dengan 3 digit angka misalnya file asli berukuran 3 kB maka penamaan sub - filenya menjadi bighit.txt.000, bighit.txt.001, bighit.txt.002.
+
+## Fungsi Enkripsi
+Berikut merupakan source code untuk fungsi enkripsi 2
+~~~
+void enc2(char * kata)
+{
+    FILE *file = fopen(kata, "rb");
+    int len = 0;
+    char dest[1024];
+    sprintf(dest, "%s.%03d", kata, len);
+    void * buffer = (char *)malloc(1024);
+    while(1){
+        size_t size = fread(buffer, 1, 1024, file);
+        if(size == 0)break;
+        FILE *op = fopen(dest, "w");
+        fwrite(buffer, 1, size, op);
+        fclose(op);
+        len++;
+        sprintf(dest, "%s.%03d", kata, len);
+    }
+    free(buffer);
+    fclose(file);
+    remove(kata);
+}
+~~~
+Langkah - langkah:
+- `FILE *file = fopen(kata, "rb");` FILE digunakan untuk membuka dan menyalin file yang akan dienkripsi, alasannya digunakan "rb" dan bukannya "r" karena yang akan disalin nantinya berupa bentuk binary.
+- `sprintf(dest, "%s.%03d", kata, len);` berdasarkan syarat yang diminta oleh soal maka digunakannya `%s.%03d` yang nantinya akan memformat nama sub - file sesuai dengan nama file awal diikuti 3 angka di belakangnya.
+- Buffer diinisiasi dengan `void * buffer = (char *)malloc(1024);` yang kemudian akan digunakan untuk menyimpan sementara memori dari file. Hal ini ditunjukkan oleh `size_t size = fread(buffer, 1, 1024, file);`
+- `FILE *op = fopen(dest, "w");` kemudian FILE kembali digunakan untuk menyalin isi dari file tersebut ke sub - file destination.
+- Jika seluruh file sudah dienkripsi maka lakukan `free(buffer)`, `fclose(file)`, dan `remove(dest)`
+
+## Fungsi Dekripsi
+Berikut merupakan source code untuk fungsi dekripsi 2
+~~~
+void dec2(char * kata)
+{
+    FILE * check = fopen(kata, "r");
+    if(check != NULL)return;
+    FILE * file = fopen(kata, "w");
+    int len = 0;
+    char dest[1024];
+    sprintf(dest, "%s.%03d", kata, len);
+    void * buffer = (char *) malloc(1024);
+    while(1){
+        FILE * op = fopen(dest, "rb");
+        if(op == NULL)break;
+        size_t size = fread(buffer, 1, 1024, op);
+        fwrite(buffer, 1, size, file);
+        fclose(op);
+        remove(dest);
+        len++;
+        sprintf(dest, "%s.%03d", kata, len);
+    }
+    free(buffer);
+    fclose(file);
+}
+~~~
+Langkah - langkah:
+- Mirip seperti fungsi enkripsi yang juga menggunakan FILE
+- Pertama, sub - file akan disalin isinya kemudian dijadikan menjadi 1 file kembali sebelum dienkripsi dengan menggunakan `FILE *check = fopen(kata, "r");` dan `FILE *file = fopen(kata, "w");`
+- Buffer diinisiasi dengan `void * buffer = (char *)malloc(1024);` yang kemudian akan digunakan untuk menyimpan sementara memori dari file. Hal ini ditunjukkan oleh `size_t size = fread(buffer, 1, 1024, file);`
+- Jika seluruh file sudah didekripsi maka lakukan `free(buffer)` dan `fclose(file)`
+
+> Kendala : belum bisa mengimplementasikannya
+
+# Soal 3: Sinkronisasi direktori otomatis
+> Kendala: kurang mengerti cara mengerjakan soal.
 
 # Soal 4 : Log System
 
