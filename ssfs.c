@@ -17,7 +17,7 @@
 
 #define KEY 10
 
-static const char *dirpath = "/home/el/tiga";
+static const char *dirpath = "/home/el/Documents";
 char charlist[1024] = "9(ku@AW1[Lmvgax6q`5Y2Ry?+sF!^HKQiBXCUSe&0M.b%rI'7d)o4~VfZ*{#:}ETt$3J-zpc]lnh8,GwP_ND|jO";
 char *limit, *start;
 int command = 0;
@@ -466,15 +466,16 @@ static int xmp_rename(const char *path, const char *to){
 
   else {
     sprintf(name, "%s", path);
+    sprintf(toname, "%s", to);
+
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL){
       enc(name);
-      toDatabase("MKDIR", name, NULL, 0);
+      toDatabase("RENAME", name, toname, 0);
     }
-    sprintf(fpath, "%s%s", dirpath, name);
 
-    sprintf(toname, "%s", to);
+    sprintf(fpath, "%s%s", dirpath, name);
     sprintf(topath, "%s%s", dirpath, toname);
 
     printf("RENAME temp %s path %s name %s\n", fpath, path, name);
