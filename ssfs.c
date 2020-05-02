@@ -119,7 +119,7 @@ void dec2(char * kata)
     if(check != NULL)return;
     FILE * file = fopen(kata, "w");
     int len = 0;
-    char dest[104];
+    char dest[1024];
     sprintf(dest, "%s.%03d", kata, len);
     void * buffer = (char *) malloc(1024);
     while(1){
