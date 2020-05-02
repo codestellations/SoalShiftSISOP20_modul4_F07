@@ -22,7 +22,7 @@ char charlist[1024] = "9(ku@AW1[Lmvgax6q`5Y2Ry?+sF!^HKQiBXCUSe&0M.b%rI'7d)o4~VfZ
 char *limit, *start;
 int command = 0;
 
-void enc(char* kata){
+void dec(char* kata){
   int len, sta;
 
   if(!strcmp(kata, ".") || !strcmp(kata, ".."))
@@ -55,11 +55,9 @@ void enc(char* kata){
       }
     }
   }
-
-  printf("ENC %s\n", kata);
 }
 
-void dec(char* kata){
+void enc(char* kata){
   int len, sta;
   if(!strcmp(kata, ".") || !strcmp(kata, ".."))
   return;
@@ -75,7 +73,6 @@ void dec(char* kata){
         break;
       }
     }
-
   }
 
   limit = strrchr(kata, '.');
@@ -92,8 +89,6 @@ void dec(char* kata){
       }
     }
   }
-
-  printf("DEC %s\n", kata);
 }
 
 /*buat encv2_*/
@@ -143,6 +138,7 @@ void dec2(char * kata)
 
 void enc2_directory(char * dir)
 {
+  printf("ENC 2 MASUK\n");
     DIR *dp;
     struct dirent *de;
     dp = opendir(dir);
@@ -165,6 +161,7 @@ void enc2_directory(char * dir)
 
 void dec2_directory(char * dir)
 {
+  printf("DEC 2 MASUK\n");
     DIR *dp;
     struct dirent *de;
     dp = opendir(dir);
@@ -242,6 +239,7 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   int res;
   char fpath[1000];
   char name[1000];
+  char temp[1000];
 
   if(strcmp(path,"/") == 0) {
     path=dirpath;
@@ -251,20 +249,18 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   else {
     sprintf(name, "%s", path);
 
-    char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL && command==0)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
   }
 
   res = lstat(fpath, stbuf);
-  //if (res == -1)
-  //return -errno;
+
   if(res == -1)
     {
-        if(encv2p == NULL) return -errno;
+        if(strstr(temp, "encv2_")==NULL) return -errno;
         else
         {
             sprintf(fpath, "%s%s.000", dirpath, path);
@@ -304,10 +300,9 @@ off_t offset, struct fuse_file_info *fi) {
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
-    printf("READIR temp %s dirpath %s name %s\n", fpath, dirpath, name);
   }
 
   int res = 0;
@@ -334,10 +329,8 @@ off_t offset, struct fuse_file_info *fi) {
     char temp[1000];
     strcpy(temp, de->d_name);
     if(strstr(fullpathname, "encv1_")!=NULL){
-      dec(temp);
+      enc(temp);
     }
-
-    printf("OPENDIR fpath %s name %s\n", fullpathname, de->d_name);
 
     res = (filler(buf, temp, &st, 0));
 
@@ -366,7 +359,7 @@ struct fuse_file_info *fi) {
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s",dirpath,name);
 
@@ -386,8 +379,6 @@ struct fuse_file_info *fi) {
 
   if (res == -1)
   res = -errno;
-
-  // logSys("READ", name, NULL, 0);
 
   close(fd);
 
@@ -412,11 +403,9 @@ off_t offset, struct fuse_file_info *fi) {
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
-
-    printf("WRITE temp %s path %s name %s\n", fpath, path, name);
   }
 
   int res,fd;
@@ -450,11 +439,9 @@ static int xmp_open(const char *path, struct fuse_file_info *fi) {
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(dirpath, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
-
-    printf("OPEN temp %s path %s name %s\n", fpath, path, name);
   }
 
   res = open(fpath, fi->flags);
@@ -485,13 +472,13 @@ static int xmp_mkdir(const char *path, mode_t mode){
 
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL){
-      enc(name);
+      dec(name);
       toDatabase("MKDIR", name, NULL, 0);
     }
 
     sprintf(fpath, "%s%s", dirpath, name);
 
-    printf("MKDIR temp %s path %s name %s\n", fpath, path, name);
+    // printf("MKDIR temp %s path %s name %s\n", fpath, path, name);
   }
 
   res = mkdir(temp, 0700);
@@ -521,11 +508,11 @@ static int xmp_rmdir(const char *path){
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
 
-    printf("RMDIR temp %s path %s name %s\n", fpath, path, name);
+    // printf("RMDIR temp %s path %s name %s\n", fpath, path, name);
 
   }
 
@@ -558,14 +545,14 @@ static int xmp_rename(const char *path, const char *to){
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL){
-      enc(name);
+      dec(name);
       toDatabase("RENAME", name, toname, 0);
     }
 
     sprintf(fpath, "%s%s", dirpath, name);
     sprintf(topath, "%s%s", dirpath, toname);
 
-    printf("RENAME temp %s path %s name %s\n", fpath, path, name);
+    // printf("RENAME temp %s path %s name %s\n", fpath, path, name);
   }
 
   res = rename(fpath, topath);
@@ -594,11 +581,11 @@ static int xmp_unlink(const char *path){
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
 
-    printf("UNLINK temp %s path %s name %s\n", fpath, path, name);
+    // printf("UNLINK temp %s path %s name %s\n", fpath, path, name);
   }
 
   res = unlink(fpath);
@@ -625,11 +612,8 @@ static int xmp_create(const char* path, mode_t mode, struct fuse_file_info *fi){
 
   else {
     sprintf(name, "%s", path);
-    enc(name);
+    dec(name);
     sprintf(fpath, "%s%s", dirpath, name);
-
-    printf("CREAT temp %s path %s name %s\n", fpath, path, name);
-
   }
 
   res = creat(fpath, mode);
@@ -659,11 +643,9 @@ static int xmp_truncate(const char *path, off_t size){
     char temp[1000];
     sprintf(temp, "%s%s", dirpath, name);
     if(strstr(temp, "encv1_")!=NULL)
-    enc(name);
+    dec(name);
 
     sprintf(fpath, "%s%s", dirpath, name);
-
-    printf("TRUNCATE temp %s path %s name %s\n", fpath, path, name);
   }
 
   res = truncate(fpath, size);
