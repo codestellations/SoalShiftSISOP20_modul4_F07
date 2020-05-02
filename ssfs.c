@@ -97,50 +97,93 @@ void dec(char* kata){
 }
 
 /*buat encv2_*/
-void enc2(char* kata)
+void enc2(char * kata)
 {
-    int len = 0;
-    char dest[1024];
-    void * buff = (char *)malloc(1024);
-    FILE *fp = fopen(kata, "rb");
-    sprintf(dest,"%s.%03d", dest, len);
-    while(1)
-    {
-        size_t size = fread(buff, 1, 1024, fp);
-        if(size == 0) break;
-        FILE *fp2 = fopen(dest, "w");
-        fwrite(buff, 1, size, fp2);
-	fclose(fp2);
-        len++;
-        sprintf(dest, "%s.%03d", dest, len);
+    FILE * file = fopen(kata, "rb");
+    int count = 0;
+    char topath[1000];
+    sprintf(topath, "%s.%03d", kata, count);
+    void * buffer = malloc(1024);
+    while(1){
+        size_t readSize = fread(buffer, 1, 1024, file);
+        if(readSize == 0)break;
+        FILE * op = fopen(topath, "w");
+        fwrite(buffer, 1, readSize, op);
+        fclose(op);
+        count++;
+        sprintf(topath, "%s.%03d", kata, count);
     }
-    free(buff);
-    fclose(fp);
-    remove(dest);
+    free(buffer);
+    fclose(file);
+    remove(kata);
 }
 
-void dec2(char *kata)
+void dec2(char * kata)
 {
-    FILE *fp = fopen(kata, "r");
-    if(fp != NULL) return;
-    FILE *fp2 = fopen(kata, "w");
-    int len = 0;
-    char dest[1024];
-    sprintf(dest, "%s%.03d", dest, len);
-    void * buff = (char *)malloc(1024);
-    while(1)
-    {
-        FILE *fp3 = fopen(kata, "rb");
-        if(fp3 == NULL) return;
-        size_t size = fread(buff, 1, 1024, fp3);
-        fwrite(buff, 1, size, fp2);
-        fclose(fp3);
-        remove(dest);
-        len++;
-        sprintf(dest, "%s%.03d", dest, len);
+    FILE * check = fopen(kata, "r");
+    if(check != NULL)return;
+    FILE * file = fopen(kata, "w");
+    int count = 0;
+    char topath[1000];
+    sprintf(topath, "%s.%03d", kata, count);
+    void * buffer = malloc(1024);
+    while(1){
+        FILE * op = fopen(topath, "rb");
+        if(op == NULL)break;
+        size_t readSize = fread(buffer, 1, 1024, op);
+        fwrite(buffer, 1, readSize, file);
+        fclose(op);
+        remove(topath);
+        count++;
+        sprintf(topath, "%s.%03d", kata, count);
     }
-    free(buff);
-    fclose(fp2);
+    free(buffer);
+    fclose(file);
+}
+
+void enc2_directory(char * dir)
+{
+    DIR *dp;
+    struct dirent *de;
+    dp = opendir(dir);
+    if (dp == NULL)
+        return;
+    char dirPath[1000];
+    char filePath[1000];
+    while ((de = readdir(dp)) != NULL) {
+        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)continue;
+        if(de->d_type == DT_DIR){
+            sprintf(dirPath, "%s/%s", dir, de->d_name);
+            enc2_directory(dirPath);
+        }else if(de->d_type == DT_REG){
+            sprintf(filePath, "%s/%s", dir, de->d_name);
+            enc2(filePath);
+        }
+    }
+    closedir(dp);
+}
+
+void dec2_directory(char * dir)
+{
+    DIR *dp;
+    struct dirent *de;
+    dp = opendir(dir);
+    if (dp == NULL)
+        return;
+    char dirPath[1000];
+    char filePath[1000];
+    while ((de = readdir(dp)) != NULL) {
+        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)continue;
+        if(de->d_type == DT_DIR){
+            sprintf(dirPath, "%s/%s", dir, de->d_name);
+            dec2_directory(dirPath);
+        }else if(de->d_type == DT_REG){
+            sprintf(filePath, "%s/%s", dir, de->d_name);
+            filePath[strlen(filePath)-4] = '\0';
+            dec2(filePath);
+        }
+    }
+    closedir(dp);
 }
 
 void logSys(char* command, char* argv1, char* argv2, int lev){
@@ -217,9 +260,28 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   }
 
   res = lstat(fpath, stbuf);
-
-  if (res == -1)
-  return -errno;
+  //if (res == -1)
+  //return -errno;
+  if(res == -1)
+    {
+        if(encv2p == NULL) return -errno;
+        else
+        {
+            sprintf(fpath, "%s%s.000", dirpath, path);
+            lstat(fpath, stbuf);
+            struct stat st;
+            int i = 0, count = 0;
+            while(1)
+            {
+                res = stat(fpath, &st);
+                if(res < 0) break;
+                i++;
+                sprintf(fpath, "%s%s.%03d", dirpath, path, i);
+                count += st.st_size;
+            }
+            stbuf->st_size = count;
+        }
+    }
 
   command = 0;
 
