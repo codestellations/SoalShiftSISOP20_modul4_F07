@@ -94,19 +94,19 @@ void enc(char* kata){
 /*buat encv2_*/
 void enc2(char * kata)
 {
-    FILE * file = fopen(kata, "rb");
-    int count = 0;
-    char topath[1000];
-    sprintf(topath, "%s.%03d", kata, count);
-    void * buffer = malloc(1024);
+    FILE *file = fopen(kata, "rb");
+    int len = 0;
+    char dest[1024];
+    sprintf(dest, "%s.%03d", kata, len);
+    void * buffer = (char *)malloc(1024);
     while(1){
-        size_t readSize = fread(buffer, 1, 1024, file);
-        if(readSize == 0)break;
-        FILE * op = fopen(topath, "w");
-        fwrite(buffer, 1, readSize, op);
+        size_t size = fread(buffer, 1, 1024, file);
+        if(size == 0)break;
+        FILE *op = fopen(dest, "w");
+        fwrite(buffer, 1, size, op);
         fclose(op);
-        count++;
-        sprintf(topath, "%s.%03d", kata, count);
+        len++;
+        sprintf(dest, "%s.%03d", kata, len);
     }
     free(buffer);
     fclose(file);
@@ -118,69 +118,22 @@ void dec2(char * kata)
     FILE * check = fopen(kata, "r");
     if(check != NULL)return;
     FILE * file = fopen(kata, "w");
-    int count = 0;
-    char topath[1000];
-    sprintf(topath, "%s.%03d", kata, count);
-    void * buffer = malloc(1024);
+    int len = 0;
+    char dest[104];
+    sprintf(dest, "%s.%03d", kata, len);
+    void * buffer = (char *) malloc(1024);
     while(1){
-        FILE * op = fopen(topath, "rb");
+        FILE * op = fopen(dest, "rb");
         if(op == NULL)break;
-        size_t readSize = fread(buffer, 1, 1024, op);
-        fwrite(buffer, 1, readSize, file);
+        size_t size = fread(buffer, 1, 1024, op);
+        fwrite(buffer, 1, size, file);
         fclose(op);
-        remove(topath);
-        count++;
-        sprintf(topath, "%s.%03d", kata, count);
+        remove(dest);
+        len++;
+        sprintf(dest, "%s.%03d", kata, len);
     }
     free(buffer);
     fclose(file);
-}
-
-void enc2_directory(char * dir)
-{
-  printf("ENC 2 MASUK\n");
-    DIR *dp;
-    struct dirent *de;
-    dp = opendir(dir);
-    if (dp == NULL)
-        return;
-    char dirPath[1000];
-    char filePath[1000];
-    while ((de = readdir(dp)) != NULL) {
-        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)continue;
-        if(de->d_type == DT_DIR){
-            sprintf(dirPath, "%s/%s", dir, de->d_name);
-            enc2_directory(dirPath);
-        }else if(de->d_type == DT_REG){
-            sprintf(filePath, "%s/%s", dir, de->d_name);
-            enc2(filePath);
-        }
-    }
-    closedir(dp);
-}
-
-void dec2_directory(char * dir)
-{
-  printf("DEC 2 MASUK\n");
-    DIR *dp;
-    struct dirent *de;
-    dp = opendir(dir);
-    if (dp == NULL)
-        return;
-    char dirPath[1000];
-    char filePath[1000];
-    while ((de = readdir(dp)) != NULL) {
-        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)continue;
-        if(de->d_type == DT_DIR){
-            sprintf(dirPath, "%s/%s", dir, de->d_name);
-            dec2_directory(dirPath);
-        }else if(de->d_type == DT_REG){
-            sprintf(filePath, "%s/%s", dir, de->d_name);
-            filePath[strlen(filePath)-4] = '\0';
-            dec2(filePath);
-        }
-    }
-    closedir(dp);
 }
 
 void logSys(char* command, char* argv1, char* argv2, int lev){
@@ -257,27 +210,7 @@ static  int  xmp_getattr(const char *path, struct stat *stbuf) {
   }
 
   res = lstat(fpath, stbuf);
-
-  if(res == -1)
-    {
-        if(strstr(temp, "encv2_")==NULL) return -errno;
-        else
-        {
-            sprintf(fpath, "%s%s.000", dirpath, path);
-            lstat(fpath, stbuf);
-            struct stat st;
-            int i = 0, count = 0;
-            while(1)
-            {
-                res = stat(fpath, &st);
-                if(res < 0) break;
-                i++;
-                sprintf(fpath, "%s%s.%03d", dirpath, path, i);
-                count += st.st_size;
-            }
-            stbuf->st_size = count;
-        }
-    }
+  if(res == -1) return -errno;
 
   command = 0;
 
