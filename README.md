@@ -147,7 +147,7 @@ fungsi ini dipanggil pada implementasi `mkdir` dan `rename` seperti berikut. ber
     }
 ~~~
 
-#Soal 2: Enkripsi versi 2
+# Soal 2: Enkripsi versi 2
 Apabila suatu folder di-rename dengan `encv2_` maka isi dari folder tersebut akan terenkripsi dengan cara file - file tersebut akan terbagi sejumlah ukuran total dari file tersebut yang masing - masing dari sub - file berukuran 1024bytes. Sedangkan penamaan dari sub - file ini mengikuti nama file asli yang diikuti dengan 3 digit angka misalnya file asli berukuran 3 kB maka penamaan sub - filenya menjadi bighit.txt.000, bighit.txt.001, bighit.txt.002.
 
 ## Fungsi Enkripsi
